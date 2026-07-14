@@ -1,59 +1,60 @@
 package com.example.danp_lab07.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.danp_lab07.data.Product
+import com.example.danp_lab07.domain.GetProductsUseCase
+import com.example.danp_lab07.domain.SaveProductUseCase
 import com.example.danp_lab07.repository.ProductRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class ProductViewModel(private val repository: ProductRepository) : ViewModel() {
-
-    private val _uiState = MutableStateFlow<ProductUiState>(ProductUiState.Loading)
-    val uiState: StateFlow<ProductUiState> = _uiState.asStateFlow()
+@HiltViewModel
+class ProductViewModel @Inject constructor(
+    private val getProductsUseCase: GetProductsUseCase,
+    private val saveProductUseCase: SaveProductUseCase,
+    private val repository: ProductRepository
+) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    init {
-        loadProducts()
-    }
-
-    fun loadProducts() {
-        _uiState.value = ProductUiState.Loading
-        try {
-            val allProducts = repository.getProducts()
-            val query = _searchQuery.value
-            val filtered = if (query.isEmpty()) {
-                allProducts
-            } else {
-                allProducts.filter { 
-                    it.name.contains(query, ignoreCase = true) || 
-                    it.category.contains(query, ignoreCase = true)
-                }
-            }
-            _uiState.value = ProductUiState.Success(filtered)
-        } catch (e: Exception) {
-            _uiState.value = ProductUiState.Error("Error al cargar productos")
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val uiState: StateFlow<ProductUiState> = _searchQuery
+        .flatMapLatest { query ->
+            getProductsUseCase(query)
         }
-    }
+        .map { products ->
+            ProductUiState.Success(products)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = ProductUiState.Loading
+        )
 
     fun onSearchQueryChanged(newQuery: String) {
         _searchQuery.value = newQuery
-        loadProducts()
     }
 
     fun saveProduct(product: Product) {
-        if (product.id == 0) {
-            repository.addProduct(product)
-        } else {
-            repository.updateProduct(product)
+        viewModelScope.launch {
+            saveProductUseCase(product)
         }
-        loadProducts()
     }
 
     fun removeProduct(id: Int) {
-        repository.deleteProduct(id)
-        loadProducts()
+        viewModelScope.launch {
+            repository.deleteProduct(id)
+        }
+    }
+
+    fun refresh() {
+        viewModelScope.launch {
+            repository.refreshProducts()
+        }
     }
 }

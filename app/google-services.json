@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "162783811360",
+    "project_id": "danp-labfinal",
+    "storage_bucket": "danp-labfinal.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:162783811360:android:65d91c87dc8617c618e945",
+        "android_client_info": {
+          "package_name": "com.example.danp_lab07"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDVSBVDtlfKELMjPKmwTdcEd4duKtczjPQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
