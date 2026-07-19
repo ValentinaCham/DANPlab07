@@ -7,8 +7,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddPhotoAlternate
@@ -86,17 +88,23 @@ fun ProductFormScreen(
     val context = LocalContext.current
     var isOnline by remember { mutableStateOf(checkConnectivity(context)) }
     DisposableEffect(Unit) {
-        val receiver = android.net.ConnectivityManager.NetworkCallback().also { cb ->
-            // Best-effort: we don't fail if the platform refuses the callback
-            // (it never does on a real device); we still rely on the initial
-            // snapshot above.
-            runCatching {
-                val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
-                cm?.registerDefaultNetworkCallback(cb)
+        val receiver = object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                isOnline = true
             }
-            cb.onAvailable = { isOnline = true }
-            cb.onLost = { isOnline = false }
+            override fun onLost(network: android.net.Network) {
+                isOnline = false
+            }
         }
+
+        // Best-effort: we don't fail if the platform refuses the callback
+        // (it never does on a real device); we still rely on the initial
+        // snapshot above.
+        runCatching {
+            val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
+            cm?.registerDefaultNetworkCallback(receiver)
+        }
+
         onDispose {
             runCatching {
                 context.getSystemService(android.net.ConnectivityManager::class.java)
@@ -145,7 +153,7 @@ fun ProductFormScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
                 .fillMaxSize()
-                .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                .verticalScroll(rememberScrollState())
         ) {
             OutlinedTextField(
                 value = name,

@@ -22,17 +22,42 @@ abstract class ProductDatabase : RoomDatabase() {
 
         /**
          * v2 → v3 introduces the `imageUris` list (replaces the singular `imageUri`).
-         * Strategy: add a new column, copy `imageUri` over wrapped in a single-element
-         * list, drop the legacy column. We rely on SQLite's limited `ALTER TABLE`
-         * capabilities, so this is done in safe incremental steps.
+         * To match Room's expected schema exactly (no legacy columns, no SQL-level
+         * default values), we recreate the table.
          */
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE products ADD COLUMN imageUris TEXT NOT NULL DEFAULT ''")
+                // 1. Create the new table matching the v3 Entity exactly (no SQL defaults)
                 db.execSQL(
-                    "UPDATE products SET imageUris = " +
-                        "CASE WHEN imageUri IS NULL OR imageUri = '' THEN '' ELSE imageUri END"
+                    """
+                    CREATE TABLE products_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        price REAL NOT NULL,
+                        description TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        imageUris TEXT NOT NULL,
+                        isSynced INTEGER NOT NULL,
+                        isDeleted INTEGER NOT NULL
+                    )
+                    """.trimIndent()
                 )
+
+                // 2. Copy data from old table. 
+                // imageUris is populated from the old imageUri column.
+                // We use the same 'isSynced' and 'isDeleted' (which were added in v2).
+                db.execSQL(
+                    """
+                    INSERT INTO products_new (id, name, price, description, category, isSynced, isDeleted, imageUris)
+                    SELECT id, name, price, description, category, isSynced, isDeleted, 
+                           COALESCE(imageUri, '') 
+                    FROM products
+                    """.trimIndent()
+                )
+
+                // 3. Remove old table and rename new one
+                db.execSQL("DROP TABLE products")
+                db.execSQL("ALTER TABLE products_new RENAME TO products")
             }
         }
     }

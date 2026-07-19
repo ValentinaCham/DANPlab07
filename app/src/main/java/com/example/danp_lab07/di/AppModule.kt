@@ -70,6 +70,7 @@ abstract class AppModule {
                 "product_db"
             )
                 .addMigrations(ProductDatabase.MIGRATION_1_2, ProductDatabase.MIGRATION_2_3)
+                .fallbackToDestructiveMigration()
                 .build()
         }
 
