@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     id("org.jetbrains.kotlin.android")
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
     kotlin("kapt")
@@ -34,9 +35,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
-    kotlinOptions {
-        jvmTarget = "21"
-    }
+
     buildFeatures {
         compose = true
     }
@@ -48,8 +47,9 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.coil.compose)
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
@@ -66,6 +66,7 @@ dependencies {
 
     // Firebase
     implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
     implementation(libs.firebase.messaging)
     implementation(libs.firebase.storage)
 
