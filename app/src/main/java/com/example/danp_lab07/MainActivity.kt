@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
@@ -19,25 +20,55 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.danp_lab07.data.remote.StorageUrlResolver
 import com.example.danp_lab07.ui.ProductDetailScreen
 import com.example.danp_lab07.ui.ProductFormScreen
 import com.example.danp_lab07.ui.ProductScreen
 import com.example.danp_lab07.ui.Screen
+import com.example.danp_lab07.ui.components.LocalStorageUrlResolver
 import com.example.danp_lab07.ui.theme.DANPlab07Theme
 import com.example.danp_lab07.viewmodel.ProductViewModel
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
 import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Resolve the StorageUrlResolver once from the Hilt-managed singleton
+        // component. We can't use hiltViewModel() here because the resolver is
+        // a pure @Singleton, not a @HiltViewModel — EntryPointAccessors is the
+        // documented bridge for exactly this case.
+        val resolver = EntryPointAccessors.fromApplication(
+            applicationContext,
+            StorageResolverEntryPoint::class.java,
+        ).storageUrlResolver()
+
         setContent {
             DANPlab07Theme {
-                ProductAppNavigation()
+                CompositionLocalProvider(LocalStorageUrlResolver provides resolver) {
+                    ProductAppNavigation()
+                }
             }
         }
     }
+}
+
+/**
+ * Hilt EntryPoint that exposes the [StorageUrlResolver] to non-ViewModel
+ * callers (in this case the Activity itself, so it can hand the resolver to
+ * the composition tree). The interface is package-private intentionally —
+ * it's an implementation detail of the wiring.
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+internal interface StorageResolverEntryPoint {
+    fun storageUrlResolver(): StorageUrlResolver
 }
 
 @Composable
@@ -80,10 +111,10 @@ fun ProductAppNavigation() {
         }
         composable(
             route = Screen.Form.route,
-            arguments = listOf(navArgument("productId") { 
+            arguments = listOf(navArgument("productId") {
                 type = NavType.StringType
                 nullable = true
-                defaultValue = null 
+                defaultValue = null
             })
         ) { backStackEntry ->
             val productIdStr = backStackEntry.arguments?.getString("productId")
