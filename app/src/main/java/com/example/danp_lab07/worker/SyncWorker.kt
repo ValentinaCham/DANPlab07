@@ -1,41 +1,60 @@
 package com.example.danp_lab07.worker
 
-import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.example.danp_lab07.data.local.ProductDao
-import com.example.danp_lab07.data.local.toDomain
+import com.example.danp_lab07.repository.ImageRepository
+import com.example.danp_lab07.repository.ProductRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import android.util.Log
 
 @HiltWorker
 class SyncWorker @AssistedInject constructor(
-    @Assisted context: Context,
+    @Assisted appContext: android.content.Context,
     @Assisted params: WorkerParameters,
-    private val productDao: ProductDao
-) : CoroutineWorker(context, params) {
+    private val repository: ProductRepository,
+    private val imageRepository: ImageRepository,
+    private val connectivityManager: ConnectivityManager,
+) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        if (!isNetworkAvailable()) {
+            Log.d(TAG, "No validated network available; retrying sync")
+            return Result.retry()
+        }
+
         return try {
-            Log.d("SyncWorker", "Starting sync...")
-            val unsyncedProducts = productDao.getUnsyncedProducts()
-            
-            unsyncedProducts.forEach { entity ->
-                // Simulate remote save
-                // val result = apiService.saveProduct(entity.toDomain())
-                // if (result.isSuccessful) {
-                //     productDao.insertProduct(entity.copy(isSynced = true))
-                // }
-                Log.d("SyncWorker", "Syncing product: ${entity.name}")
-                productDao.insertProduct(entity.copy(isSynced = true))
+            Log.d(TAG, "Starting sync: push then pull")
+            val tombstonedIds = repository.syncPendingChanges()
+            if (tombstonedIds.isNotEmpty()) {
+                Log.d(TAG, "Cleaning Storage for ${tombstonedIds.size} tombstones")
+                tombstonedIds.forEach { id ->
+                    runCatching { imageRepository.deleteAllForProduct(id) }
+                        .onFailure { Log.w(TAG, "Storage cleanup failed for $id", it) }
+                }
             }
-            
+            repository.refreshProducts()
+            Log.d(TAG, "Sync finished successfully")
             Result.success()
-        } catch (e: Exception) {
-            Log.e("SyncWorker", "Error syncing", e)
+        } catch (exception: Exception) {
+            Log.e(TAG, "Sync failed, will retry", exception)
             Result.retry()
         }
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    companion object {
+        const val TAG = "SyncWorker"
+        const val UNIQUE_NAME = "product_sync_periodic"
+        const val IMMEDIATE_WORK_NAME = "product_sync_immediate"
     }
 }
