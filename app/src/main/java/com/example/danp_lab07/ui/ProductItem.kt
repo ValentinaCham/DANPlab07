@@ -1,9 +1,11 @@
 package com.example.danp_lab07.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -14,10 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.example.danp_lab07.data.Product
+import com.example.danp_lab07.ui.components.RemoteImage
 
 @Composable
 fun ProductItem(product: Product, onClick: () -> Unit, onDelete: () -> Unit) {
@@ -30,13 +31,29 @@ fun ProductItem(product: Product, onClick: () -> Unit, onDelete: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (product.imageUri.isNotEmpty()) {
-                AsyncImage(
-                    model = product.imageUri,
+            val firstImage = product.imageUris.firstOrNull()
+            if (firstImage != null) {
+                RemoteImage(
+                    path = firstImage,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    contentScale = ContentScale.Crop
                 )
+                Spacer(modifier = Modifier.width(16.dp))
+            } else {
+                // No images attached — keep visual weight balanced with a
+                // placeholder slot so the row still looks like a row.
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Default.Image,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Spacer(modifier = Modifier.width(16.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
