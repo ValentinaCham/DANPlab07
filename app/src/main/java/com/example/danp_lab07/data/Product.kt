@@ -6,5 +6,9 @@ data class Product(
     val price: Double,
     val description: String,
     val category: String,
-    val imageUri: String
-)
+    val imageUris: List<String> = emptyList(),
+) {
+    companion object {
+        const val MAX_IMAGES = 3
+    }
+}
