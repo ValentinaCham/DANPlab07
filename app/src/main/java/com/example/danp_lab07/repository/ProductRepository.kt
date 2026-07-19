@@ -8,5 +8,18 @@ interface ProductRepository {
     suspend fun getProductById(id: Int): Product?
     suspend fun saveProduct(product: Product)
     suspend fun deleteProduct(id: Int)
-    suspend fun refreshProducts() // To sync with remote
+
+    /**
+     * Pull fresh data from the remote source and merge into Room. Remote
+     * is the source of truth on conflicts unless the local row is pending sync.
+     */
+    suspend fun refreshProducts()
+
+    /**
+     * Push every pending change (created/edited/deleted) to the remote
+     * source. Returns the list of product ids that were tombstoned (i.e.
+     * hard-deleted from Room during this sync) so the caller can run
+     * compensating actions like dropping their Storage folder.
+     */
+    suspend fun syncPendingChanges(): List<Int>
 }
