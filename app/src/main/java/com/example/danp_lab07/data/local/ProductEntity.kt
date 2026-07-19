@@ -11,8 +11,9 @@ data class ProductEntity(
     val price: Double,
     val description: String,
     val category: String,
-    val imageUri: String,
-    val isSynced: Boolean = true // Flag for offline-first sync logic
+    val imageUris: List<String> = emptyList(),
+    val isSynced: Boolean = true,
+    val isDeleted: Boolean = false,
 )
 
 fun ProductEntity.toDomain(): Product {
@@ -22,18 +23,22 @@ fun ProductEntity.toDomain(): Product {
         price = price,
         description = description,
         category = category,
-        imageUri = imageUri
+        imageUris = imageUris,
     )
 }
 
-fun Product.toEntity(isSynced: Boolean = true): ProductEntity {
+fun Product.toEntity(
+    isSynced: Boolean = true,
+    isDeleted: Boolean = false,
+): ProductEntity {
     return ProductEntity(
         id = id,
         name = name,
         price = price,
         description = description,
         category = category,
-        imageUri = imageUri,
-        isSynced = isSynced
+        imageUris = imageUris,
+        isSynced = isSynced,
+        isDeleted = isDeleted,
     )
 }
